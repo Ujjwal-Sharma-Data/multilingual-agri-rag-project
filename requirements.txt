@@ -9,8 +9,7 @@ langchain-chroma
 langchain-google-genai
 
 llama-parse
-
-sentence-transformers
+sentence-transformers>=2.2.2
 chromadb
 
 torch
