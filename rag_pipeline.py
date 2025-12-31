@@ -94,18 +94,7 @@ def build_rag_pipeline(
     pdf_path: str,
     persist_dir: str = "chroma_db",
 ):
-    # -------------------------------
     # 1. LlamaParse (PDF → Markdown)
-    # -------------------------------
-    parser = LlamaParse(
-        api_key=os.getenv("LLAMA_CLOUD_API_KEY"),
-        result_type="markdown",
-        parsing_instruction=(
-            "Extract all text, preserve tables accurately, "
-            "keep headings and section structure."
-        ),
-    )
-
     docs = async_llamaparse(pdf_path)
 
 
