@@ -31,7 +31,7 @@ llm=ChatGoogleGenerativeAI(
 embeddings = HuggingFaceEmbeddings(
     model_name="BAAI/bge-m3",
     model_kwargs={
-        "device": "mps" #for MAC
+        "device": "cpu"
     },
     encode_kwargs={
         "normalize_embeddings": True
