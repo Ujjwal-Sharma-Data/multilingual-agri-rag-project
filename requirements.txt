@@ -1,0 +1,11 @@
+streamlit
+python-dotenv
+llama-parse
+langchain
+langchain-core
+langchain-community
+langchain-google-genai
+langchain-huggingface
+langchain-chroma
+chromadb
+python-dotenv
