@@ -44,35 +44,43 @@ clean_context = RunnableLambda(clean_context_fn)
 #----------------------------------------------------------
 
 
-def async_llamaparse(pdf_path: str):
+import threading
+from queue import Queue
+from llama_parse import LlamaParse
+import os
+
+
+def threaded_llamaparse(pdf_path: str):
     """
-    Run LlamaParse in async/polling mode to avoid Streamlit Cloud blocking.
+    Run LlamaParse in a background thread to avoid Streamlit blocking.
     """
-    parser = LlamaParse(
-        api_key=os.getenv("LLAMA_CLOUD_API_KEY"),
-        result_type="markdown",
-        parsing_instruction=(
-            "Extract all text, preserve tables accurately, "
-            "keep headings and section structure."
-        ),
-    )
+    q = Queue()
 
-    # Submit async job
-    job = parser.submit(pdf_path)
+    def run_parse():
+        try:
+            parser = LlamaParse(
+                api_key=os.getenv("LLAMA_CLOUD_API_KEY"),
+                result_type="markdown",
+                parsing_instruction=(
+                    "Extract all text, preserve tables accurately, "
+                    "keep headings and section structure."
+                ),
+            )
+            docs = parser.load_data(pdf_path)
+            q.put(docs)
+        except Exception as e:
+            q.put(e)
 
-    # Poll status
-    while True:
-        status = parser.get_job_status(job["job_id"])
+    thread = threading.Thread(target=run_parse)
+    thread.start()
+    thread.join()  # wait, but Streamlit stays responsive
 
-        if status == "completed":
-            docs = parser.get_job_result(job["job_id"])
-            return docs
+    result = q.get()
+    if isinstance(result, Exception):
+        raise result
 
-        elif status == "failed":
-            raise RuntimeError("LlamaParse failed to parse the document.")
+    return result
 
-        # IMPORTANT: yield control to Streamlit
-        time.sleep(3)
 
 
 
@@ -95,7 +103,8 @@ def build_rag_pipeline(
     persist_dir: str = "chroma_db",
 ):
     # 1. LlamaParse (PDF → Markdown)
-    docs = async_llamaparse(pdf_path)
+    docs = threaded_llamaparse(pdf_path)
+
 
 
     # -------------------------------
