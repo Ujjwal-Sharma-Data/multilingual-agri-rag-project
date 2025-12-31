@@ -1,6 +1,6 @@
 import os
 from typing import List
-
+import time
 from llama_parse import LlamaParse
 
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -39,6 +39,42 @@ def clean_context_fn(docs: List[Document]) -> str:
 
 clean_context = RunnableLambda(clean_context_fn)
 
+#----------------------------------------------------------
+#Helper: run LlamaParse in async mode
+#----------------------------------------------------------
+
+
+def async_llamaparse(pdf_path: str):
+    """
+    Run LlamaParse in async/polling mode to avoid Streamlit Cloud blocking.
+    """
+    parser = LlamaParse(
+        api_key=os.getenv("LLAMA_CLOUD_API_KEY"),
+        result_type="markdown",
+        parsing_instruction=(
+            "Extract all text, preserve tables accurately, "
+            "keep headings and section structure."
+        ),
+    )
+
+    # Submit async job
+    job = parser.submit(pdf_path)
+
+    # Poll status
+    while True:
+        status = parser.get_job_status(job["job_id"])
+
+        if status == "completed":
+            docs = parser.get_job_result(job["job_id"])
+            return docs
+
+        elif status == "failed":
+            raise RuntimeError("LlamaParse failed to parse the document.")
+
+        # IMPORTANT: yield control to Streamlit
+        time.sleep(3)
+
+
 
 # ---------------------------------------------------------
 # Custom retriever for BGE query prefix
@@ -70,7 +106,8 @@ def build_rag_pipeline(
         ),
     )
 
-    docs = parser.load_data(pdf_path)
+    docs = async_llamaparse(pdf_path)
+
 
     # -------------------------------
     # 2. Merge markdown
